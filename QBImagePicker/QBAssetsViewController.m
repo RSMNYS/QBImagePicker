@@ -24,6 +24,12 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
 
 @end
 
+@interface  QBAssetsViewController()
+
+@property (nonatomic, assign) BOOL isAllSelected;
+
+@end
+
 @implementation NSIndexSet (Convenience)
 
 - (NSArray *)qb_indexPathsFromIndexesWithSection:(NSUInteger)section
@@ -57,6 +63,7 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
 @interface QBAssetsViewController () <PHPhotoLibraryChangeObserver, UICollectionViewDelegateFlowLayout>
 
 @property (nonatomic, strong) IBOutlet UIBarButtonItem *doneButton;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *selectAllButton;
 
 @property (nonatomic, strong) PHFetchResult *fetchResult;
 
@@ -94,9 +101,11 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     
     // Show/hide 'Done' button
     if (self.imagePickerController.allowsMultipleSelection) {
-        [self.navigationItem setRightBarButtonItem:self.doneButton animated:NO];
+        UIBarButtonItem *fixedItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
+        fixedItem.width = 30.0f;
+        [self.navigationItem setRightBarButtonItems:@[self.doneButton, fixedItem, self.selectAllButton] animated:NO];
     } else {
-        [self.navigationItem setRightBarButtonItem:nil animated:NO];
+        [self.navigationItem setRightBarButtonItems:nil animated:NO];
     }
     
     [self updateDoneButtonState];
@@ -187,6 +196,55 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     }
 }
 
+- (IBAction)selectAll:(UIBarButtonItem *)sender
+{
+    QBImagePickerController *imagePickerController = self.imagePickerController;
+    NSMutableOrderedSet *selectedAssets = imagePickerController.selectedAssets;
+    
+    if (!imagePickerController.allowsMultipleSelection)
+    {
+        return;
+    }
+    
+    if (self.isAllSelected)
+    {
+        //deselect all
+        [selectedAssets removeAllObjects];
+        
+        for (NSInteger row = 0; row < [self.collectionView numberOfItemsInSection:0]; row++) {
+            [self.collectionView deselectItemAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0] animated:NO];
+        }
+    }
+    else
+    {
+        //select all
+        [selectedAssets removeAllObjects];
+        
+        for (PHAsset *asset in self.fetchResult)
+        {
+            [selectedAssets addObject:asset];
+        }
+        
+        for (NSInteger row = 0; row < [self.collectionView numberOfItemsInSection:0]; row++) {
+            [self.collectionView selectItemAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0] animated:NO scrollPosition:UICollectionViewScrollPositionNone];
+        }
+    }
+    
+    self.isAllSelected = !self.isAllSelected;
+    
+     
+    [self updateDoneButtonState];
+    [self updateSelectAllButtonTitle: self.isAllSelected ? @"Deselect All" : @"Select All"];
+    
+    if (imagePickerController.showsNumberOfSelectedAssets) {
+        [self updateSelectionInfo];
+        
+        if (selectedAssets.count == 1) {
+            // Show toolbar
+            [self.navigationController setToolbarHidden:NO animated:YES];
+        }
+    }
+}
 
 #pragma mark - Toolbar
 
@@ -265,23 +323,28 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
 
 - (BOOL)isMinimumSelectionLimitFulfilled
 {
-   return (self.imagePickerController.minimumNumberOfSelection <= self.imagePickerController.selectedAssets.count);
+    return (self.imagePickerController.minimumNumberOfSelection <= self.imagePickerController.selectedAssets.count);
 }
 
 - (BOOL)isMaximumSelectionLimitReached
 {
     NSUInteger minimumNumberOfSelection = MAX(1, self.imagePickerController.minimumNumberOfSelection);
-   
+    
     if (minimumNumberOfSelection <= self.imagePickerController.maximumNumberOfSelection) {
         return (self.imagePickerController.maximumNumberOfSelection <= self.imagePickerController.selectedAssets.count);
     }
-   
+    
     return NO;
 }
 
 - (void)updateDoneButtonState
 {
     self.doneButton.enabled = [self isMinimumSelectionLimitFulfilled];
+}
+
+- (void)updateSelectAllButtonTitle:(NSString *)title
+{
+    self.selectAllButton.title = title;
 }
 
 
@@ -458,10 +521,10 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
                                 contentMode:PHImageContentModeAspectFill
                                     options:nil
                               resultHandler:^(UIImage *result, NSDictionary *info) {
-                                  if (cell.tag == indexPath.item) {
-                                      cell.imageView.image = result;
-                                  }
-                              }];
+        if (cell.tag == indexPath.item) {
+            cell.imageView.image = result;
+        }
+    }];
     
     // Video indicator
     if (asset.mediaType == PHAssetMediaTypeVideo) {
