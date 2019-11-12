@@ -234,7 +234,7 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     
      
     [self updateDoneButtonState];
-    [self updateSelectAllButtonTitle: self.isAllSelected ? @"Deselect All" : @"Select All"];
+    [self updateSelectAllButtonTitle];
     
     if (imagePickerController.showsNumberOfSelectedAssets) {
         [self updateSelectionInfo];
@@ -342,9 +342,9 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     self.doneButton.enabled = [self isMinimumSelectionLimitFulfilled];
 }
 
-- (void)updateSelectAllButtonTitle:(NSString *)title
+- (void)updateSelectAllButtonTitle
 {
-    self.selectAllButton.title = title;
+    self.selectAllButton.title = self.isAllSelected ? @"Deselect All" : @"Select All";
 }
 
 
@@ -673,6 +673,9 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     if ([imagePickerController.delegate respondsToSelector:@selector(qb_imagePickerController:didSelectAsset:)]) {
         [imagePickerController.delegate qb_imagePickerController:imagePickerController didSelectAsset:asset];
     }
+    
+    self.isAllSelected = self.fetchResult.count == selectedAssets.count;
+    [self updateSelectAllButtonTitle];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didDeselectItemAtIndexPath:(NSIndexPath *)indexPath
@@ -705,6 +708,8 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     if ([imagePickerController.delegate respondsToSelector:@selector(qb_imagePickerController:didDeselectAsset:)]) {
         [imagePickerController.delegate qb_imagePickerController:imagePickerController didDeselectAsset:asset];
     }
+    self.isAllSelected = self.fetchResult.count == selectedAssets.count;
+    [self updateSelectAllButtonTitle];
 }
 
 
